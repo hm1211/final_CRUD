@@ -24,7 +24,8 @@ public class FileService {
 
     /**
      * 파일을 서버에 물리적으로 저장하고 DB에 정보를 기록합니다.
-     * @param boardId : 파일이 첨부될 게시글의 PK
+     *
+     * @param boardId       : 파일이 첨부될 게시글의 PK
      * @param multipartFile : 컨트롤러에서 받은 MultipartFile 객체
      */
     @Transactional
@@ -77,6 +78,7 @@ public class FileService {
 
     /**
      * 특정 게시글에 첨부된 모든 파일 정보 조회
+     *
      * @param bno : 이미지가 저장된 게시글 PK
      * @return 파일 정보 목록
      */
@@ -87,4 +89,27 @@ public class FileService {
     public com.site.domain.File findById(long fileId) {
         return fileMapper.findById(fileId);
     }
+
+    // 파일 삭제후 새로운 파일 등록 기능 구현
+    @Transactional
+    public void deleteFilesByBoardId(long bno) {
+        // 1. DB에서 게시글에 첨부된 파일 정보 조회
+        List<com.site.domain.File> files = fileMapper.findFilesByBoardId(bno);
+
+        // 2. 파일 목록을 순회하며 서버에 저장된 실제 파일 삭제
+        for (com.site.domain.File file : files) {
+            File targetFile = new File(file.getFile_path());
+            if (targetFile.exists()) {
+                targetFile.delete();
+            }
+        }
+
+        // 3. DB에서 파일 정보 삭제
+//        fileMapper.findFilesByBoardId(bno).forEach(file -> {
+//            fileMapper.deleteById(file.getId());
+//        });
+        fileMapper.deleteByBoardId(bno);
+    }
+
 }
+

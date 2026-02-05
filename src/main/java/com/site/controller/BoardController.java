@@ -99,7 +99,6 @@ public class BoardController {
 
     /**
      * 게시글 삭제
-     *
      * @param bno : 삭제할 특정 게시글 찾기
      */
     @PostMapping("/{bno}/delete")
@@ -110,7 +109,12 @@ public class BoardController {
         if (loginUser == null || !board.getWriter().equals(loginUser.getId())) {
             return "redirect:/boards";
         }
+
+        // 기존에 첨부된 파일들을 모두 삭제 (서버 파일 + DB 정보)
+        fileService.deleteFilesByBoardId(bno);
+        // 게시글 삭제
         boardService.delete(bno);
+
         return "redirect:/boards";
     }
 
@@ -132,19 +136,34 @@ public class BoardController {
             return "redirect:/boards";
         }
         model.addAttribute("board", board);
+
+        // 기존 첨부파일 정보 조회 후 모델에 추가
+        List<File> attachedFiles = fileService.findFilesByBoardId(bno);
+        model.addAttribute("attachedFiles", attachedFiles);
         return "boards/editForm";
     }
 
+    // 파일 로직 추가 : 새로운 파일 첨부시 기존 파일 삭제 후 새 파일 저장
     @PostMapping("/{bno}/edit")
-    public String edit(@PathVariable long bno, Board board, HttpSession session) {
+    public String edit(@PathVariable long bno, Board board,
+                       @RequestParam("file") MultipartFile file, HttpSession session) {
         User loginUser = (User) session.getAttribute("user");
         Board exitstingBoard = boardService.findById(bno);
 
         if (loginUser == null || !exitstingBoard.getWriter().equals(loginUser.getId())) {
             return "redirect:/boards";
         }
+        // 1. 게시글 텍스트 정보(제목, 내용)를 업데이트
         board.setBno(bno);
         boardService.update(board);
+
+        // 2. 새로운 파일이 첨부되어있는지 확인
+        if (!file.isEmpty()) {
+            // 3. 기존에 첨부된 파일들을 모두 삭제 (서버 파일 + DB 정보)
+            fileService.deleteFilesByBoardId(bno);
+            // 4. 새로운 파일 저장
+            fileService.saveFile(bno, file);
+        }
         return "redirect:/boards/" + bno;
     }
 }
